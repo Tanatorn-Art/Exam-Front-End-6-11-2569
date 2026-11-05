@@ -39,7 +39,7 @@ export function Header({
         {/* API URL Pill */}
         <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-xs font-mono text-slate-600">
           <Server className="w-3.5 h-3.5 text-slate-500" />
-          <span>{API_BASE_URL}</span>
+          <span>{API_BASE_URL || "/api (Proxy)"}</span>
           <span
             className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded font-semibold ${
               isBackendOnline

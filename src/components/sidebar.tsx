@@ -194,7 +194,7 @@ export function Sidebar({
               </span>
             </div>
             <div className="text-[10px] text-slate-600 font-mono truncate">
-              {API_BASE_URL}
+              {API_BASE_URL || "/api (Proxy)"}
             </div>
           </div>
         ) : (

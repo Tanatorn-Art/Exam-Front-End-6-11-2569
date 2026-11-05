@@ -1,15 +1,14 @@
 /**
- * Base URL สำหรับเรียกใช้งาน .NET Web API
- * ดึงค่ามาจาก .env.local (NEXT_PUBLIC_API_URL) หรือใช้ค่า default เป็น http://localhost:5000
+ * Base URL สำหรับเรียกใช้งาน API ผ่าน Next.js Rewrite Proxy
+ * เรียกผ่าน Same-Origin (Relative Path) เพื่อความปลอดภัยสูงสุดตามกฎของ Vercel
+ * โดย Environment Variable (API_URL) จะถูกเก็บไว้ฝั่ง Server เท่านั้น และไม่ต้องใช้ NEXT_PUBLIC_
  */
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:5000";
+export const API_BASE_URL = "";
 
 /**
- * URL สำหรับเปิดดูเอกสาร Swagger UI
+ * URL สำหรับเปิดดูเอกสาร Swagger UI (ผ่าน Next.js Rewrite Proxy)
  */
-export const SWAGGER_URL =
-  process.env.NEXT_PUBLIC_SWAGGER_URL || `${API_BASE_URL}/swagger`;
+export const SWAGGER_URL = "/swagger/index.html";
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
@@ -39,7 +38,7 @@ export async function apiRequest<T = unknown>(
 ): Promise<T> {
   const { params, headers, ...rest } = options;
 
-  let url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+  let url = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
 
   // จัดการ Query Parameters (ถ้ามี)
   if (params) {
@@ -55,7 +54,7 @@ export async function apiRequest<T = unknown>(
     }
   }
 
-  // ส่ง Request ไปยัง Backend
+  // ส่ง Request ไปยัง API Proxy
   const response = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
@@ -118,11 +117,9 @@ export const apiClient = {
 
   /**
    * Method POST สำหรับอัปโหลดไฟล์ผ่าน FormData (multipart/form-data)
-   * สำคัญ: ห้ามใส่ Content-Type เป็น multipart/form-data ใน header ด้วยตัวเอง
-   * เพราะเบราว์เซอร์ต้องสร้าง boundary header อัตโนมัติ
    */
   async uploadFormData<T = unknown>(endpoint: string, formData: FormData): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+    const url = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -152,7 +149,7 @@ export const apiClient = {
    * ดาวน์โหลดไฟล์จาก Backend (เช่น Export Excel จาก .NET เป็นไฟล์ .xlsx)
    */
   async downloadBlob(endpoint: string, defaultFileName = "export.xlsx"): Promise<void> {
-    const url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+    const url = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -171,23 +168,22 @@ export const apiClient = {
   },
 
   /**
-   * ฟังก์ชันทดสอบการเชื่อมต่อ API / Swagger (.NET Backend)
+   * ฟังก์ชันทดสอบการเชื่อมต่อ API / Swagger ผ่าน Proxy
    */
   async checkConnection(): Promise<{ ok: boolean; latencyMs: number; message: string }> {
     const start = performance.now();
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-      const res = await fetch(`${API_BASE_URL}/swagger/index.html`, {
-        method: "HEAD",
-        mode: "no-cors",
+      const res = await fetch("/api/Employee/highest-salary", {
+        method: "GET",
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
       const latencyMs = Math.round(performance.now() - start);
-      return { ok: true, latencyMs, message: "Connected to Swagger / .NET" };
+      return { ok: res.ok, latencyMs, message: res.ok ? "Connected to Backend API" : "Backend unreachable" };
     } catch (err: unknown) {
       const latencyMs = Math.round(performance.now() - start);
       const message = err instanceof Error ? err.message : "Connection failed";
